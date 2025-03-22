@@ -9,9 +9,6 @@ services:
       - NET_ADMIN
     volumes:
       - ./data/web:/app/data/web
-      - ./images:/app/data/web/images
-      - ./images/ui:/app/data/web/images/ui
-      - ./config.yaml:/app/data/web/config.yaml
       - ./config/dnsmasq.conf:/app/config/dnsmasq.conf
       - ./config/nginx/app.conf:/app/config/nginx/app.conf
       - ./certs:/app/certs

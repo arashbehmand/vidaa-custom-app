@@ -57,12 +57,24 @@ else
     echo "Using existing SSL certificates from /app/certs"
 fi
 
-# Create symbolic links for images
+# Create necessary directories
 mkdir -p /app/data/web/images/ui
+mkdir -p /var/log/nginx
 
-# Set proper permissions
+# Ensure log directories exist and have proper permissions
+touch /var/log/nginx/access.log
+touch /var/log/nginx/error.log
+chmod 644 /var/log/nginx/access.log /var/log/nginx/error.log
+
+# Set proper permissions for SSL certificates and web content
+chmod -R 755 /app/data/web
 chown -R nginx:nginx /app/data/web
+chown -R nginx:nginx /var/log/nginx
+
+# Test nginx configuration
+echo "Testing Nginx configuration..."
+nginx -t
 
 # Start services using supervisord
 echo "Starting services via supervisord..."
-/usr/bin/supervisord -c /app/supervisord.conf 
+/usr/bin/supervisord -c /app/supervisord.conf
