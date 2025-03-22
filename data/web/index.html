@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Vidaa App Store</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, height=device-height">
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script type="text/javascript">
+    // --- Constants and Data ---
+let appList = []; // Will be loaded from config
+let imageBaseUrl = '/images/';  // Default value, will be updated from config
+let uiBaseUrl = '/images/ui/';  // Default value, will be updated from config
+let defaultBackgroundColor = '#fafafa';  // Will be updated from config
+let defaultTextColor = '#0f0f0f';  // Will be updated from config
+const encryptedData = '696aa22fc375afab73c223bf8c049f38f7cb8a48cebf3cc26b4204898386d1bfdb9b125c8eb848af60b9005e79377e4db85f8ee66e198881396f63835c5971aebcc7d09c42f22021ad8f9cb112caafa5d159aa25dab91ad8e60dee1c12e09a14a9eeca1ca2e7d3b93fc86a8b88551214c403c880e298212f39e564b46973a5a0';
+const digits = ['48', '49', '50', '51', '52', '53', '54', '55', '56', '57']; // ASCII for '0' to '9'
+let unlockKey = 0;
+let themeType = 0;
+let listCounter = 0;
+let tilePosition = 0;
+let specialAppPosition = 3;
+let keyCheck = 0;
+
+// Load configuration from YAML
+async function loadConfig() {
+    try {
+        const response = await fetch('/config.yaml');
+        const yamlText = await response.text();
+        const config = jsyaml.load(yamlText);
+        
+        // Update global variables from config
+        appList = config.apps;
+        imageBaseUrl = config.server.image_base_url;
+        uiBaseUrl = config.server.ui_base_url;
+        defaultBackgroundColor = config.theme.default_background_color;
+        defaultTextColor = config.theme.default_text_color;
+        
+        // Initialize the app store after loading config
+        initializeAppStore();
+    } catch (error) {
+        console.error('Error loading configuration:', error);
+    }
+}
+
+// Initialize app store after loading config
+function initializeAppStore() {
+    if (typeof Hisense_installApp != 'undefined') {
+        $('.CBGbtn').removeClass("hide");
+        displayTVInfo();
+        $.each(appList, (index, app) => {
+            addAppTile(app);
+        });
+    } else {
+        $('#nosupport').removeClass("hide");
+    }
+}
+
+// --- Utility Functions ---
+
+// Custom console.log to output to the .debug element
+function logToDebug(message) {
+    let output = '';
+    if (typeof message === "object") {
+        output = JSON && JSON.stringify ? JSON.stringify(message) : message;
+    } else {
+        output = message;
+    }
+    $(".debug").append("<p>" + output + "</p>").animate({ scrollTop: $(".debug").prop("scrollHeight") }, 500);
+}
+</script>
+<script type="text/javascript">
+    // Mock Hisense API Functions for Browser Testing
+
+if (typeof Hisense_Decrypt === 'undefined') {
+    window.Hisense_Decrypt = function(encryptedData) {
+        console.log("Mock Hisense_Decrypt called with:", encryptedData);
+        // Return a sample decrypted array (replace with something meaningful if you know the decryption)
+        // This is just a placeholder - you might need to adjust this based on what your code expects after decryption
+        return [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+            30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+            44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+        ];
+    };
+}
+
+if (typeof Hisense_installApp === 'undefined') {
+    window.Hisense_installApp = function(appId, appName, thumbUrl, iconUrl, bannerUrl, appUrl, storeType, callback) {
+        console.log("Mock Hisense_installApp called with:", {
+            appId: appId,
+            appName: appName,
+            thumbUrl: thumbUrl,
+            iconUrl: iconUrl,
+            bannerUrl: bannerUrl,
+            appUrl: appUrl,
+            storeType: storeType
+        });
+        // Simulate installation success after a short delay
+        setTimeout(function() {
+            console.log("Mock installation of", appName, "completed successfully.");
+            if (callback) {
+                callback(false); // Indicate success (no error)
+            }
+        }, 1000); // 1 second delay
+    };
+}
+
+if (typeof Hisense_uninstallApp === 'undefined') {
+    window.Hisense_uninstallApp = function(appId, callback) {
+        console.log("Mock Hisense_uninstallApp called for appId:", appId);
+        // Simulate uninstallation success after a short delay
+        setTimeout(function() {
+            console.log("Mock uninstallation of app with ID", appId, "completed successfully.");
+            if (callback) {
+                callback(true); // Indicate success
+            }
+        }, 500); // 0.5 second delay
+    };
+}
+
+if (typeof Hisense_GetMacAddress === 'undefined') {
+    window.Hisense_GetMacAddress = function() {
+        console.log("Mock Hisense_GetMacAddress called.");
+        // Return a sample MAC address
+        return "00:11:22:33:44:55";
+    };
+}
+
+if (typeof Hisense_getInstalledApps === 'undefined') {
+    window.Hisense_getInstalledApps = function() {
+        console.log("Mock Hisense_getInstalledApps called.");
+        // Return a sample JSON string of installed apps (adjust as needed)
+        return JSON.stringify([
+            { "Id": "sampledebug1", "AppName": "Sample App 1", "Thumb": "mock_thumb1.png", "URL": "http://sampleapp1.com" },
+            { "Id": "sampledebug2", "AppName": "Sample App 2", "Thumb": "mock_thumb2.png", "URL": "http://sampleapp2.com" }
+        ]);
+    };
+}
+
+if (typeof Hisense_GetDNS === 'undefined') {
+    window.Hisense_GetDNS = function() {
+        console.log("Mock Hisense_GetDNS called.");
+        // Return a sample DNS server address
+        return "8.8.8.8";
+    };
+}
+
+if (typeof Hisense_GetNetType === 'undefined') {
+    window.Hisense_GetNetType = function() {
+        console.log("Mock Hisense_GetNetType called.");
+        // Return a sample network type
+        return "Ethernet";
+    };
+}
+
+if (typeof Hisense_GetBrand === 'undefined') {
+    window.Hisense_GetBrand = function() {
+        console.log("Mock Hisense_GetBrand called.");
+        // Return a sample brand name
+        return "Hisense Mock Brand";
+    };
+}
+
+if (typeof Hisense_GetOSVersion === 'undefined') {
+    window.Hisense_GetOSVersion = function() {
+        console.log("Mock Hisense_GetOSVersion called.");
+        // Return a sample OS version
+        return "Vidaa Mock OS Version";
+    };
+}
+
+if (typeof getInstalledAppJsonObj === 'undefined') {
+    window.getInstalledAppJsonObj = function() {
+        console.log("Mock getInstalledAppJsonObj called.");
+        // Return a sample JSON object similar to what Hisense might provide
+        return {
+            "AppInfo": [
+                { "Id": "mockdebug1", "AppName": "Mock App 1", "Thumb": "mock_thumb1.png", "URL": "http://mockapp1.com" },
+                { "Id": "mockdebug2", "AppName": "Mock App 2", "Thumb": "mock_thumb2.png", "URL": "http://mockapp2.com" }
+            ]
+        };
+    };
+}
+</script>
+<script type="text/javascript">
+
+
+// --- Key Generation and Validation ---
+
+function generateUnlockCode(macAddress) {
+    try {
+        const macParts = macAddress.split(':');
+        const decimalMac = macParts.map(part => parseInt(part, 16)).join('');
+        const unlockCode = [
+            digits[decimalMac[0]],
+            digits[decimalMac[1]],
+            digits[decimalMac[2]],
+            digits[decimalMac[3]],
+            digits[decimalMac[4]],
+            digits[decimalMac[5]]
+        ];
+
+        const str = "==========> ";
+        const arm1 = " " + str.substring(0, decimalMac[0]) + "> TYPE " + str.substring(0, decimalMac[1]) + "> ";
+        const arm2 = " " + str.substring(0, decimalMac[2]) + "> DNS " + str.substring(0, decimalMac[3]) + "> ";
+        const arm3 = " " + str.substring(0, decimalMac[4]) + "> MAC " + str.substring(0, decimalMac[5]) + "> ";
+        return { unlockCode, arm1, arm2, arm3 };
+
+    } catch (error) {
+        logToDebug("NO GetMacAddress API, ERROR !!");
+        return { unlockCode: [], arm1: "", arm2: "", arm3: "" };
+    }
+}
+
+function generateDateCode() {
+    try {
+        const decrypted = Hisense_Decrypt(encryptedData);
+        const dateCode = [digits[decrypted[37]], digits[decrypted[38]], digits[decrypted[39]], digits[decrypted[40]]];
+        const arr = '||++++';
+        const arr2 = '||++++';
+        return { dateCode, arr, arr2 };
+    } catch (error) {
+        const date = new Date();
+        const day = date.getUTCDate();
+        const dayOfWeek = [7, 1, 2, 3, 4, 5, 6][date.getUTCDay()];
+        const weekOfMonth = Math.floor(date.getUTCDate() / 7) + 1;
+        const dayDigits = day.toString().split('');
+        let d0 = digits[dayDigits[0]];
+        let d1 = digits[dayDigits[1]];
+
+        if (day < 10) {
+            d1 = d0;
+            d0 = digits[0];
+        }
+        const str = "==========> ";
+        const dateCode = [d0, digits[dayOfWeek], digits[weekOfMonth], d1];
+        const arr = '||' + str.substring(0, dayOfWeek) + " " + str.substring(0, 10 - dayOfWeek);
+        const arr2 = '||' + str.substring(0, weekOfMonth) + " " + str.substring(0, 10 - weekOfMonth);
+
+        return { dateCode, arr, arr2 };
+    }
+}
+// --- UI Building ---
+
+function addAppTile(app) {
+    const iconUrl = `${uiBaseUrl}/${app.appId}.png`;
+    const thumbnailUrl = `${imageBaseUrl}/${app.appId}.png`;
+
+    const container = $('#container');
+    const tile = $("#empty_tile").clone();
+
+    tile.find(".icon img").attr("src", iconUrl);
+    tile.find('.name').text(app.name);
+    tile.find('.ticon').text(app.name);
+    tile.find(".text").text(app.text);
+    tile.find(".install").html(`<div class="name">${app.name}</div><div class="text">${app.text}</div><div class="nam">Click OK to install</div>`);
+    tile.find(".install").data("appid", app.appId);
+    tile.removeClass('hide');
+    container.append(tile);
+
+    const debugAppName = app.name + 'debug';
+    let storeType = 'store';
+
+    if (["Wink", "ТТК ТВ", "TikTok", "Билайн ТВ"].includes(app.name)) {
+        storeType = "hisense";
+    }
+
+    if (localStorage.getItem('bc') !== "undefined") {
+        applyTheme(localStorage.getItem('bc'), localStorage.getItem('c'));
+    }
+
+    if (localStorage.getItem('bc') !== defaultBackgroundColor && localStorage.getItem('bc') !== defaultTextColor) {
+        applyTheme(defaultBackgroundColor, defaultTextColor);
+    }
+
+    if (localStorage.getItem('tp') !== "undefined" && localStorage.getItem('tp') == 0) {
+        $(".icon").addClass("hide");
+    }
+
+    const appIndex = appList.findIndex(item => item.name === app.name);
+
+    let isSpecialApp = false;
+    if ((appIndex < 12 || (appIndex > 29 && appIndex < 36))) {
+        isSpecialApp = false;
+    } else {
+        isSpecialApp = true;
+    }
+
+    tile.mouseenter(function() {
+        $(".APP").text(`${appIndex + 1} / ${appList.length}`);
+        $(".APP").removeClass("hide");
+        tile.mouseleave(function() {
+            $(".APP").addClass("hide");
+        });
+
+        if (appIndex + 1 > 24 && listCounter === 0) {
+            $("#container").css('transform', "translateY(-336px)");
+            listCounter = 1;
+        }
+        if (appIndex + 1 < 25 && listCounter === 1) {
+            $("#container").css("transform", "translateY(0px)");
+            listCounter = 0;
+        }
+        if (appIndex + 1 > 48 && listCounter === 1) {
+            $('#container').css("transform", "translateY(-615px)");
+            listCounter = 2;
+        }
+        if (appIndex + 1 < 49 && listCounter === 2) {
+            $('#container').css("transform", "translateY(-336px)");
+            listCounter = 1;
+        }
+        if (appIndex + 1 === specialAppPosition) {
+            keyCheck = 1;
+        } else {
+            keyCheck = 0;
+        }
+
+        if (!isSpecialApp && !unlockKey) {
+            tile.find(".nokey").html(`</div><div class="text"> <b>─ ${app.name} ─</b><br><br>Not available in DEMO version</div>`);
+            tile.find(".nokey").removeClass("hide");
+        } else {
+            tile.find(".install").click(function() {
+                Hisense_installApp(debugAppName, app.name, thumbnailUrl, thumbnailUrl, thumbnailUrl, app.url, storeType, (installError) => {
+                    if (installError) {
+                        groupedLog('NO', '-', "INSTALLATION FAILED", '-');
+                    } else {
+                        groupedLog('OK', '-', `${app.name} app INSTALLATION COMPLETED!`, '-');
+                        tile.find(".install").slideUp(500);
+                        tile.find('.V').removeClass("hide");
+                        refreshAppsOnHisenseUI(debugAppName);
+                    }
+                });
+            });
+        }
+
+        tile.find(".uninstall").html(`<div class="button">UNINSTALL</div>${app.name}`);
+        tile.find(".uninstall").click(function() {
+            Hisense_uninstallApp(debugAppName, (uninstallError) => {
+                if (!uninstallError) {
+                    logToDebug("Error uninstall app");
+                } else {
+                    groupedLog('ОК', '-', `${app.name} app uninstalled success!`, '-');
+                    tile.find(".install").slideDown(500);
+                    tile.find('.V').addClass('hide');
+                    refreshAppsOnHisenseUI(debugAppName);
+                }
+            });
+        });
+
+        if (installedApps.length > 0) {
+            for (let i = 0; i < installedApps.length; i++) {
+                if (app.name === installedApps[i].AppName) {
+                    tile.find(".install").addClass("hide");
+                    tile.find('.V').removeClass("hide");
+                }
+            }
+        }
+    });
+}
+
+// --- Event Listeners ---
+
+$(document).ready(function() {
+    loadConfig();  // Load configuration before initializing
+    
+    if (localStorage.getItem("key") !== null) {
+        unlockKey = parseInt(localStorage.getItem("key"));
+        unlockKey++;
+        localStorage.setItem("key", unlockKey);
+        $(".CBRbtn, .CBYbtn").removeClass('hide');
+    } else {
+        unlockKey = 0;
+    }
+
+    if (localStorage.getItem('tp') !== null) {
+        themeType = parseInt(localStorage.getItem('tp'));
+    }
+
+    if (typeof Hisense_installApp != 'undefined') {
+        $('.CBGbtn').removeClass("hide");
+        displayTVInfo();
+        $.each(appList, (index, app) => {
+            addAppTile(app);
+        });
+    } else {
+        $('#nosupport').removeClass("hide");
+    }
+});
+
+let installedApps = [];
+try {
+    const jsObj = getInstalledAppJsonObj(); // Assuming this function is defined elsewhere
+    if (jsObj && jsObj.AppInfo) { // Added null check for jsObj
+        for (let i = 0; i < jsObj.AppInfo.length; i++) {
+            if (jsObj.AppInfo[i].Id.indexOf('debug') >= 0) {
+                installedApps.push(jsObj.AppInfo[i]);
+            }
+        }
+    }
+} catch (error) {
+    console.error("getInstalledAppJsonObj fail!");
+}
+
+if (!!window.sraf_ext) {
+    $("html").css({ 'transform': "scale(1.4) translate(315px, 130px)" });
+    unlockKey = 3;
+    imageBaseUrl = "img/"; // Corrected this line
+}
+
+document.addEventListener("keydown", function(event) {
+    let macBasedCode = {};
+    let dateBasedCode = {};
+
+    if (typeof Hisense_GetMacAddress !== 'undefined'){
+        macBasedCode = generateUnlockCode(Hisense_GetMacAddress());
+    }
+    if (typeof Hisense_Decrypt !== 'undefined'){
+        dateBasedCode = generateDateCode();
+    }
+
+    if (!unlockKey && keyCheck === 1) {
+        this.INPUT = this.INPUT || [];
+        if (this.INPUT.length <= dateBasedCode.dateCode.length) {
+          this.INPUT.push(event.keyCode);
+        } else {
+          this.INPUT = [];
+        }
+        if (this.INPUT.some((code, index) => dateBasedCode.dateCode[index] != code)) {
+          this.INPUT = [];
+        }
+        if (this.INPUT.join() === dateBasedCode.dateCode.join()) {
+          unlockKey = 1;
+          localStorage.setItem("key", unlockKey);
+          groupedLog("KEY", '-', "Unlocked ! Your Master Key: " + macBasedCode.unlockCode.join('').slice(0, 6), '-');
+          $('.nokey').addClass("hide");
+          $(".CBRbtn, .CBYbtn").removeClass('hide');
+          this.INPUT = [];
+        }
+    }
+
+    if (!unlockKey) {
+        this.SIN = this.SIN || [];
+        if (this.SIN.length <= macBasedCode.unlockCode.length) {
+            this.SIN.push(event.keyCode);
+        } else {
+            this.SIN = [];
+        }
+        if (this.SIN.some((code, index) => macBasedCode.unlockCode[index] != code)) {
+            this.SIN = [];
+        }
+
+        if (this.SIN.join() === macBasedCode.unlockCode.join()) {
+            unlockKey = 1;
+            localStorage.setItem("key", unlockKey);
+            groupedLog("KEY", '-', "Master Key Unlock !", '-');
+            $('.nokey').addClass('hide');
+            $(".CBRbtn, .CBYbtn").removeClass("hide");
+            this.SIN = [];
+        }
+    }
+
+    switch (event.keyCode) {
+        case 8: // Backspace
+            window.close();
+            break;
+        case 194: // Get Log (Green button)
+            getLog();
+            break;
+        case 195: // Color Theme (Yellow button)
+            if (!!unlockKey) {
+                colorTheme();
+            }
+            break;
+        case 193: // Debug On/Off (Red button)
+            clickRedButton();
+            break;
+        case 196: // Reset Key (Blue Button)
+            if (!!unlockKey) {
+                localStorage.removeItem("key");
+                $(".CBRbtn, .CBYbtn").addClass("hide");
+            }
+            break;
+    }
+    event.preventDefault();
+}, false);
+
+// --- Theme and Logging ---
+let logCounter = 0;
+let redButtonClicked = 0;
+
+function getLog() {
+    logCounter++;
+    if (logCounter === 1 && redButtonClicked !== 1) {
+        $('.debug').addClass("debig");
+        $("#container, .CBRbtn").addClass('hide');
+        $(".CBGbtn").text("Off Log");
+        let installedAppsStr = "error";
+        let installAppStatus = "error";
+        let dnsStr = "error";
+        let macAddressStr = "error";
+        let netTypeStr = "error";
+
+        try {
+            installedAppsStr = Hisense_getInstalledApps();
+        } catch (e) { }
+        try {
+            installAppStatus = (typeof Hisense_installApp != "undefined") ? 'OK' : "error";
+        } catch (e) { }
+        try {
+            dnsStr = Hisense_GetDNS();
+        } catch (e) { }
+        try {
+            macAddressStr = Hisense_GetMacAddress();
+        } catch (e) { }
+        try {
+            netTypeStr = Hisense_GetNetType();
+        } catch (e) { }
+        const str = "==========> ";
+        let macBasedCode = {};
+        let dateBasedCode = {};
+
+        if (typeof Hisense_GetMacAddress !== 'undefined'){
+            macBasedCode = generateUnlockCode(Hisense_GetMacAddress());
+        }
+        if (typeof Hisense_Decrypt !== 'undefined'){
+            dateBasedCode = generateDateCode();
+        }
+
+        groupedLog("API LOG", "|| Hisense_installApp " + str + installAppStatus, "|| Country_Code " + str + installedAppsStr, "|| Date " + str + new Date());
+        if (!unlockKey) {
+            groupedLog("NET LOG", dateBasedCode.arr, "|| NET " + macBasedCode.arm1 + netTypeStr + " " + macBasedCode.arm2 + dnsStr + macBasedCode.arm3 + macAddressStr, dateBasedCode.arr2);
+        } else {
+            groupedLog("API LOG", str.slice(0, 9), "Your master key: " + str + macBasedCode.unlockCode.slice(0, 6).join(''), str.slice(0, 9));
+        }
+    } else {
+        if (redButtonClicked !== 1) {
+            $(".debug").removeClass("debig");
+            displayTVInfo();
+            logCounter = 0;
+            $('#container').removeClass("hide");
+            $(".CBGbtn").text("Get Log");
+            if (!!unlockKey) {
+                $('.CBRbtn').removeClass("hide");
+            }
+        }
+    }
+}
+let themeCounter = 0;
+
+function applyTheme(backgroundColor, textColor) {
+    $(".nam, .name, .V").css({ 'background-color': backgroundColor, 'color': textColor });
+    $('.V').css({ 'box-shadow': "0px 0px 0px 2px" + textColor });
+    $(".ticon, .btn-danger, .btn-info, .nokey, input,  #save, select, .debimg").css("border", "2px solid" + backgroundColor);
+    $("input,  #save, select").css('border', "1px solid" + backgroundColor);
+    $("body, .debug, .ticon, .btn-info, .text, .nokey, #debugon, #appName, #comb").css({ 'background-color': textColor, 'color': backgroundColor });
+    $(".CBGbtn , .CBYbtn, .CBRbtn, .text, .tile:hover .text, .APP, .di, #console, #save, #comb, #appName, #appUrl, #thumbnail").css({ 'color': backgroundColor });
+    $(".btn-info , .btn-danger, .nokey").css({ 'box-shadow': "0 0 17px 17px" + textColor });
+
+    $("#save").hover(function() {
+        $(this).css({ 'background-color': backgroundColor, 'color': textColor });
+    }, function() {
+        $(this).css({ 'background-color': 'transparent', 'color': backgroundColor });
+    });
+    localStorage.setItem('bc', backgroundColor);
+    localStorage.setItem('c', textColor);
+}
+
+function colorTheme() {
+    themeCounter++;
+    if (redButtonClicked !== 1 && logCounter !== 1) {
+        switch (themeCounter) {
+            case 1:
+                $(".icon").removeClass('hide');
+                themeType = 1;
+                localStorage.setItem('tp', themeType);
+                applyTheme(defaultBackgroundColor, defaultTextColor);
+                break;
+            case 2:
+                themeType = 0;
+                $(".icon").addClass("hide");
+                localStorage.setItem('tp', themeType);
+                break;
+            case 3:
+                $('.icon').removeClass("hide");
+                themeType = 1;
+                localStorage.setItem('tp', themeType);
+                applyTheme(defaultTextColor, defaultBackgroundColor);
+                break;
+            case 4:
+                themeType = 0;
+                themeCounter = 0;
+                $('.icon').addClass("hide");
+                localStorage.setItem('tp', themeType);
+                break;
+        }
+    } else if (themeCounter === 1 || themeCounter === 3) {
+        applyTheme(defaultBackgroundColor, defaultTextColor);
+    } else {
+        applyTheme(defaultTextColor, defaultBackgroundColor);
+        if (themeCounter = 4) {
+            themeCounter = 0;
+        }
+    }
+}
+
+function groupedLog(groupTitle, separator1, message, separator2) {
+    console.groupCollapsed(groupTitle);
+    console.log(separator1);
+    console.log(message);
+    console.log(separator2);
+    console.groupEnd();
+}
+
+
+function refreshAppsOnHisenseUI(appName) {
+    const message = {
+        "type": "APPMessage",
+        MsgType: "appControl",
+        "action": "updateAppState",
+        "source": "browser",
+        "startAppType": 2,
+        "param": {
+            'event': 'AllAppsUpdate',
+            'SubModuleName': 'AllApps',
+            'startFrom': '',
+            'appInfo': appName
+        }
+    };
+    if (!!window.omi_platform) {
+        omi_platform.sendPlatformMessage(JSON.stringify(message));
+    } else if (!!window.opera_omi) {
+        opera_omi.sendPlatformMessage(JSON.stringify(message));
+    }
+}
+
+function displayTVInfo() {
+    try {
+        $(".debug").html(`<div>${Hisense_GetBrand()} vidaa ${Hisense_GetOSVersion()} TV detected<br>Model name: ${Hisense_GetModelName()}<br>FirmWare Version: ${Hisense_GetFirmWareVersion()}</div>`);
+    } catch (error) {
+        groupedLog('TV', '==', "TV API not detected", '==');
+    }
+}
+
+function clickRedButton() {
+    if (!!unlockKey) {
+        redButtonClicked++;
+        if (redButtonClicked === 1) {
+            $("#shop, .CBGbtn").addClass('hide');
+            $("#debugon").removeClass("hide");
+            $(".CBRbtn").text("Debug Off");
+            loadDebugMode();
+        } else {
+            $("#shop, .CBGbtn").removeClass('hide');
+            $('#debugon').addClass("hide");
+            $(".CBRbtn").text("Debug On");
+            displayTVInfo();
+            redButtonClicked = 0;
+        }
+    }
+}
+
+function loadDebugMode() {
+    $("#debugon").html(`<div class="di"><p>You have installed <font-size:32px>${installedApps.length} apps <select id ="comb" onchange="changeDebugApp()"></select></p></div><div class="di"><p>App Name <input id="appName" type="text"></p></div><div class="di"><p>Thumbnail <input  type="text" id="thumbnail"></p></div><div class="di"><p>App Url <input  type="text" id="appUrl"></p></div><button id="save" onclick="saveDebugApp()">INSTALL</button><div class="debimg"> <img src="" /> </div>`);
+    if (installedApps.length > 0) {
+        fillDebugFields(installedApps[0]);
+    }
+    for (let i = 0; i < installedApps.length; i++) {
+        document.getElementById("comb").options.add(new Option(installedApps[i].AppName, i));
+    }
+    applyTheme(localStorage.getItem('bc'), localStorage.getItem('c'));
+}
+
+function fillDebugFields(app) {
+    document.getElementById("appName").value = app.AppName;
+    document.getElementById('thumbnail').value = app.Thumb;
+    document.getElementById('appUrl').value = app.URL;
+    let thumbnailUrl = app.Thumb;
+    if (app.Thumb.indexOf("195.58.50.236") >= 0) {
+        thumbnailUrl = "https://vidaa.do.am/images/" + app.Thumb.split('/').pop();
+    }
+    $(".debimg").html(`<div><img src =${thumbnailUrl} /></div>`);
+}
+
+function saveDebugApp() {
+    const appName = document.getElementById("appName").value;
+    let thumbnailUrl = document.getElementById("thumbnail").value;
+    const appUrl = document.getElementById('appUrl').value;
+    const debugAppName = appName + "debug";
+
+    if (thumbnailUrl === '') {
+        thumbnailUrl = imageBaseUrl + "img/" + "anb_icon.png";
+    }
+
+    for (let i = 0; i < installedApps.length; i++) {
+        if (appUrl === installedApps[i].URL) {
+            if (appName !== installedApps[i].AppName) {
+                document.getElementById("console").innerText += `You have installed the app of ${appUrl}, please provide another one!\n\r`;
+                return;
+            }
+        }
+    }
+
+    if (appName !== '' && appUrl !== '' && appUrl.indexOf('http') === 0) {
+        Hisense_installApp(debugAppName, appName, thumbnailUrl, thumbnailUrl, thumbnailUrl, appUrl, "store", (installError) => {
+            if (installError) {
+                groupedLog('NO', '-', "INSTALLATION FAILED", '-');
+            } else {
+                groupedLog('OK', '-', `${appName} app INSTALLATION COMPLETED!`, '-');
+                $(".debimg").html(`<div><img src =${thumbnailUrl} /></div>`);
+                refreshAppsOnHisenseUI(debugAppName);
+            }
+        });
+    } else {
+        if (appName === '' || appUrl === '') {
+            groupedLog("Error", "===", "App Name and App Url could not be null !", "===");
+        }
+        if (appUrl.indexOf("http") < 0) {
+            groupedLog("Error", "===", "App Url must start with http or https", "===");
+        }
+    }
+}
+
+function changeDebugApp() {
+    const selectedApp = installedApps[document.getElementById("comb").options.selectedIndex];
+    fillDebugFields(selectedApp);
+}
+
+// --- Placeholder for getInstalledAppJsonObj ---
+//  This function is likely provided by the Hisense environment.
+//  For testing purposes, we'll create a mock version.
+function getInstalledAppJsonObj() {
+    //  Return a sample object. Replace with actual implementation when available.
+    return {
+        AppInfo: [
+           // { Id: 'exampledebug', AppName: 'ExampleApp', Thumb: 'http://example.com/thumb.png', URL: 'http://example.com' }
+        ]
+    };
+}
+
+console.log = logToDebug;
+console.error = console.debug = console.info = console.log;
+
+try {
+  let OS = Hisense_GetOSVersion();
+  if (OS.indexOf('U6') >= 0 || OS.indexOf("U06") >= 0 || OS.indexOf('U07') >= 0 || OS.indexOf('U7') >= 0 || OS.indexOf("U08") >= 0 || OS.indexOf('U8') >= 0) {
+     imageBaseUrl = "img/";
+  } else if (OS.indexOf('U04') >= 0 || OS.indexOf('U4') >= 0) {
+    unlockKey = 4;
+     imageBaseUrl = 'images/';
+  } else {
+     imageBaseUrl = "images/";
+  }
+} catch (_0x496245) {
+   imageBaseUrl = "images/";
+}
+</script>
+<style type="text/css">
+*{
+margin:0px;
+padding:0px;
+}
+
+html {
+overflow: hidden;
+font-size: 10px;
+}
+
+body{
+width: 1280px;
+height: 720px;
+font-family: Arial;
+overflow: visible hidden;
+line-height: 1.3;
+text-align: center;
+background-color: #ffffff;
+}
+
+#container{
+width: 1098px;
+height: 593px;
+display: block;
+position: relative;
+top: 57px;
+left: 102px;
+}
+
+.hide {
+display: none !important;
+}
+
+.tile {
+position: absolute;
+width:167px;
+height:67px;
+display: block;
+/*! left:100px; */
+/*! top:57px; */
+position: relative;
+margin: 0px 15px 31px 0px;
+float: left;
+}
+
+#debug {
+color:#000000;
+font-size: 1.9rem;
+height: 65px;
+overflow: hidden;
+top: 645px;
+position: absolute;
+z-index: 2;
+padding: 5px 0px 5px 0px;
+left: 100px;
+width: 1106px;
+text-align: left;
+background-color: #ffffff;
+}
+
+.tile:hover .btn-info , .tile:hover .nokey {
+transform: scale(0.85) translate(-137px, -55px);
+width: 400px;
+height: 180px;
+box-shadow: 0 0 17px 17px rgba(0, 0, 0, 1);
+background-color: #1c242b;
+border:2px solid #006266;
+outline: none;
+}
+
+.nam,.name {
+padding:1px 0px 1px 0px;
+width:100%;
+background-color:#006266;
+font-size: 2.5rem;
+}
+
+.nam {
+bottom: 0px;
+border-radius: 0 0 6px 6px;
+background-color: red;
+}
+
+.name {
+top: 0px;
+font-weight: bold;
+border-radius: 8px 8px 0 0;
+}
+
+.text {
+font-size: 2.1rem;
+text-overflow: ellipsis;
+width: 370px;
+left: 0px;
+top:0px;
+vertical-align:middle;
+word-wrap: break-word;
+top: 50%;
+transform: translateY(-53%);
+line-height: 1.1;
+margin: 0px 10px;
+display: none;
+}
+
+.tile:hover .name , .tile:hover .nam , .tile:hover .text,
+.tile:hover .btn-danger, .tile:hover .btn-info, .tile:hover .nokey {
+opacity: 1;
+display: block;
+z-index: 10;
+}
+
+.tile:hover .btn-info,
+.tile:hover .nokey {
+z-index: 11;
+border-radius: 10px;
+}
+
+button, .btn-info, .btn-danger, .name, .nam, .text, .nokey {
+opacity: 0;
+display: none;
+position: absolute;
+}
+
+.ticon {
+position: absolute;
+font-size: 2.0rem;
+top: 0px;
+color: #ecf0f1;
+border-radius: 13px;
+border:2px solid #379082;
+padding:30px 0px 30px 0px;
+width:100%;
+background-color: #273139;
+}
+
+.APP{
+position: absolute;
+top:686px;
+left: 1200px;
+font-size: 1.7rem;
+color: #c7ccce;
+z-index: 10;
+font-weight: 100;
+}
+
+.btn-danger {
+transform: scale(1) translate(-15px, -5px);
+width: 200px;
+height: 97px;
+box-shadow: 0 0 17px 17px rgba(0, 0, 0, 1);
+background-color: #951516;
+border:2px solid #006266;
+border-radius:10px;
+font-size: 2.2rem;
+color: #f7e8d4;
+line-height: 1.3;
+z-index: 20;
+}
+
+.CBGbtn , .CBYbtn, .CBRbtn {
+background-color: transparent;
+border: none;
+overflow: hidden;
+outline:none;
+display: block;
+opacity: 1;
+color: white;
+z-index: 10;
+text-align: center;
+font-size: 1.7rem;
+width: 169px;
+top: 673px;
+color: #000000;
+padding: 5px 0 5px 0;
+position: absolute;
+}
+
+.CBGbtn {
+border-bottom:5px solid #008000ff;
+left: 830px;
+}
+
+.CBYbtn {
+border-bottom:5px solid #f1c40fff;
+left: 1012px;
+}
+
+.CBGbtn:hover {
+background-color: #008000ff;
+border-radius:7px;
+}
+
+.CBYbtn:hover {
+background-color: #f1c40fff;
+border-radius:7px;
+}
+
+.icon img {
+position: absolute;
+width:167px;
+height:86px;
+display: block;
+border-radius: 10px;
+z-index: 1;
+left: 2px;
+top: 2px;
+}
+
+.CBRbtn {
+border-bottom:5px solid #f10f24;
+left: 648px;
+}
+
+.CBRbtn:hover {
+background-color: #f10f24;
+border-radius:7px;
+}
+
+</style>
+</head>
+<body class="bg-light">
+<!-- <img src="http://vidaahub.com/anb_filimo.png"/> -->
+<div id="debug" class="bg-dark text-white"></div></div>
+
+<div id="container"></div>
+<div class="bg-secondary tile hide" id="empty_tile">
+<div class="icon"> <img src=""/> </div>
+<div id="action">
+<button type="button" class="btn btn-info install"></button>
+<button type="button" class="btn btn-danger uninstall"></button>
+<div class="nokey hide"></div>
+<div class="ticon"></div>
+</div>
+</div>
+<div class="APP"></div>
+<button type="btn" class="CBGbtn" onclick="getLOG();">Get Log</button>
+<button type="btn" class="CBYbtn hide" onclick="colorTHEME();">Change Theme</button>
+<button type="btn" class="CBRbtn hide" onclick="clickR();">Debug On</button>
+</body>
+
+
+</html>

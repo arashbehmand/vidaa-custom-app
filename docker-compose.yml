@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  hisense-server:
+    build: .
+    container_name: hisense-server
+    network_mode: host # Or use ports if host network is problematic
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./data/web:/app/data/web
+      - ./images:/app/data/web/images
+      - ./images/ui:/app/data/web/images/ui
+      - ./config.yaml:/app/data/web/config.yaml
+      - ./config/dnsmasq.conf:/app/config/dnsmasq.conf
+      - ./config/nginx/app.conf:/app/config/nginx/app.conf
+      - ./certs:/app/certs
+    environment:
+      - DOMAINS=vidaahub.com,vidaahubimg.com
+    restart: unless-stopped 

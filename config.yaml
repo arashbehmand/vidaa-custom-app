@@ -1,0 +1,92 @@
+# Server Configuration
+server:
+  image_base_url: "/images"  # Base URL for serving images locally
+  ui_base_url: "/images/ui"  # Base URL for UI elements
+
+# Application List
+apps:
+  - appId: "anb_mytuner"
+    name: "myTuner Radio"
+    url: "https://devices.mytuner.mobi/?utm_source=Foxxum"
+    text: ""
+    
+  - appId: "anb_filimo"
+    name: "Filimo"
+    url: "https://tv.filimo.com/fa"
+    text: ""
+    
+  - appId: "anb_classicfm"
+    name: "Classic fm"
+    url: "http://iptv.musicradio.com/foxxum/Classic/"
+    text: ""
+    
+  - appId: "anb_namava"
+    name: "Namava"
+    url: "https://tv.namava.ir/"
+    text: ""
+    
+  - appId: "anb_anten"
+    name: "Anten"
+    url: "https://www.anten.ir/"
+    text: ""
+    
+  - appId: "anb_aio"
+    name: "Aio"
+    url: "https://tv.aionet.ir/"
+    text: ""
+    
+  - appId: "anb_aparat"
+    name: "Aparat"
+    url: "https://tv.aparat.com/"
+    text: ""
+    
+  - appId: "anb_filmnet"
+    name: "Filmnet"
+    url: "https://tv.filmnet.ir/"
+    text: ""
+    
+  - appId: "anb_telewebion"
+    name: "Telewebion"
+    url: "https://telewebion.com/"
+    text: ""
+    
+  - appId: "anb_reelgood"
+    name: "Reelgood"
+    url: "https://tv.reelgood.com/"
+    text: ""
+    storeType: "hisense"
+    
+  - appId: "anb_stremio"
+    name: "Stremio"
+    url: "https://tv.strem.io"
+    text: ""
+    storeType: "foxxum"
+    
+  - appId: "anb_spotify"
+    name: "Spotify"
+    url: "https://api-partner.spotify.com/tvapp?platform=webos"
+    text: ""
+    storeType: "hisense"
+    
+  - appId: "anb_soundcloud"
+    name: "Soundcloud"
+    url: "https://mobi.soundcloud.com/"
+    text: ""
+    storeType: "opera"
+    
+  - appId: "anb_vmusic"
+    name: "VMusic"
+    url: "https://vmusic.ir/app/"
+    text: ""
+    storeType: "opera"
+    
+  - appId: "anb_30nama"
+    name: "30Nama Stream"
+    url: "https://30nama.tv/#"
+    text: ""
+    storeType: "foxxum"
+
+# Theme Configuration
+theme:
+  default_background_color: "#fafafa"
+  default_text_color: "#0f0f0f" 
